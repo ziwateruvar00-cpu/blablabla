@@ -1,4 +1,5 @@
 ﻿@model IEnumerable<Web_ban_do_thu_cong_my_nghe.Data.Order>
+@using Web_ban_do_thu_cong_my_nghe.Helpers
 
 @{
     ViewData["Title"] = "Lịch sử đơn hàng";
@@ -27,7 +28,7 @@ else
                 <tr>
                     <td>@item.Id</td>
                     <td>@(item.OrderDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
-                    <td>@(!string.IsNullOrWhiteSpace(item.Status) ? item.Status : "Đang giao hàng")</td>
+                    <td>@OrderStatusHelper.GetLabel(item.Status)</td>
                     <td>@item.Notes</td>
                     <td>@item.TotalMoney.ToString("N0")</td>
                 </tr>

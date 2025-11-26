@@ -1,0 +1,99 @@
+@model Web_ban_do_thu_cong_my_nghe.ViewModels.AdminOrderIndexVM
+@{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Hoa đơn & vận chuyển</h1>
+        <p class="page-subtitle">Quản lý toàn bộ vòng đời đơn hàng và tồn kho</p>
+    </div>
+    <div class="header-actions">
+        <a asp-controller="Admin" asp-action="Dashboard" class="btn btn-link">← Quay lại Dashboard</a>
+    </div>
+</div>
+
+<div class="grid grid-3">
+    <div class="kpi-card">
+        <p class="kpi-label">Đơn chờ xử lý</p>
+        <h3 class="kpi-value text-warning">@Model.PendingCount</h3>
+    </div>
+    <div class="kpi-card">
+        <p class="kpi-label">Đang giao</p>
+        <h3 class="kpi-value text-info">@Model.ShippingCount</h3>
+    </div>
+    <div class="kpi-card">
+        <p class="kpi-label">Đã hoàn tất</p>
+        <h3 class="kpi-value text-success">@Model.CompletedCount</h3>
+    </div>
+</div>
+
+<div class="grid grid-2 mt-4">
+    <div class="panel">
+        <h4>Tồn kho & bán ra</h4>
+        <div class="inventory-stats">
+            <div>
+                <p class="label">Số lượng tồn</p>
+                <h3>@Model.InventoryInStock</h3>
+            </div>
+            <div>
+                <p class="label">Số lượng bán</p>
+                <h3>@Model.TotalUnitsSold</h3>
+            </div>
+            <div>
+                <p class="label">Doanh thu hôm nay</p>
+                <h3>@Model.RevenueToday.ToString("N0") ₫</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel mt-4">
+    <div class="panel-header">
+        <h4>Danh sách đơn hàng</h4>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Khách hàng</th>
+                    <th>Ngày đặt</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td>#@order.Id</td>
+                        <td>@order.User?.Fullname</td>
+                        <td>@order.OrderDate?.ToString("dd/MM/yyyy")</td>
+                        <td>@order.TotalMoney.ToString("N0") ₫</td>
+                        <td>
+                            <span class="status-badge @Web_ban_do_thu_cong_my_nghe.Helpers.OrderStatusHelper.GetStatusClass(order.Status)">
+                                @Web_ban_do_thu_cong_my_nghe.Helpers.OrderStatusHelper.GetStatusText(order.Status)
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <form asp-action="UpdateStatus" method="post" class="status-inline-form">
+                                <input type="hidden" name="id" value="@order.Id" />
+                                <select name="status" class="form-select" onchange="this.form.submit()">
+                                    @foreach (var option in Web_ban_do_thu_cong_my_nghe.Helpers.OrderStatusHelper.GetStatusOptions())
+                                    {
+                                        <option value="@option.Value" selected="@(order.Status == option.Value)">
+                                            @option.Label
+                                        </option>
+                                    }
+                                </select>
+                                @Html.AntiForgeryToken()
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,69 @@
+@model Web_ban_do_thu_cong_my_nghe.Data.User
+@{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    var orders = Model.Orders?.OrderByDescending(o => o.Id) ?? Enumerable.Empty<Web_ban_do_thu_cong_my_nghe.Data.Order>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Khách hàng: @Model.Fullname</h1>
+        <p class="page-subtitle">Thông tin liên hệ và lịch sử mua hàng</p>
+    </div>
+    <div class="header-actions">
+        <a asp-action="Index" class="btn btn-link">← Danh sách khách hàng</a>
+    </div>
+</div>
+
+<div class="grid grid-2">
+    <div class="panel">
+        <h4>Thông tin liên hệ</h4>
+        <p><strong>Email:</strong> @Model.Email</p>
+        <p><strong>Số điện thoại:</strong> @Model.PhoneNumber</p>
+        <p><strong>Địa chỉ:</strong> @Model.Address</p>
+        <p><strong>Trạng thái:</strong> @(Model.Status ? "Hoạt động" : "Đã khóa")</p>
+    </div>
+    <div class="panel">
+        <h4>Thao tác nhanh</h4>
+        <form asp-action="ToggleLock" method="post">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button type="submit" class="btn @(Model.Status ? "btn-warning" : "btn-success")">
+                @(Model.Status ? "Khóa tài khoản" : "Mở khóa tài khoản")
+            </button>
+            @Html.AntiForgeryToken()
+        </form>
+    </div>
+</div>
+
+<div class="panel mt-4">
+    <h4>Lịch sử đơn hàng</h4>
+    @if (!orders.Any())
+    {
+        <p class="text-muted">Khách hàng chưa có đơn hàng nào.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Ngày đặt</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in orders)
+                    {
+                        <tr>
+                            <td>#@order.Id</td>
+                            <td>@order.OrderDate?.ToString("dd/MM/yyyy")</td>
+                            <td>@order.TotalMoney.ToString("N0") ₫</td>
+                            <td>@Web_ban_do_thu_cong_my_nghe.Helpers.OrderStatusHelper.GetStatusText(order.Status)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

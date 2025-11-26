@@ -1,0 +1,113 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-gj5mxnH6tMQS8zE5Q6lYV0iS8V1+npFO6NVW7kRwVddcY7L2utZk6c1ae6zWLa0B" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-p1CmS3QBIK8Hw9yNawCh6wS5c2Se7HY1wBt50ioHqJcethLgFrde2t8L9kQtZnBbfYn6pZQ3nZCQ7X5n0Oh0Ug==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="admin-body">
+    <div class="admin-shell">
+        <nav class="admin-sidebar">
+            <div class="brand-block">
+                <div class="brand-icon">
+                    <i class="fa fa-feather"></i>
+                </div>
+                <div>
+                    <p class="brand-label">Mỹ Nghệ Việt</p>
+                    <strong class="brand-title">Quản trị viên</strong>
+                </div>
+            </div>
+
+            <div class="admin-nav-section">
+                <p class="admin-nav-heading">Tổng quan</p>
+                <a class="admin-nav-link @(currentController == "Admin" && currentAction == "Dashboard" ? "active" : null)" asp-controller="Admin" asp-action="Dashboard">
+                    <i class="fa fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a class="admin-nav-link @(currentController == "Admin" && currentAction == "Index" ? "active" : null)" asp-controller="Admin" asp-action="Index">
+                    <i class="fa fa-users-gear"></i>
+                    <span>Quản lý user</span>
+                </a>
+                <a class="admin-nav-link @(currentController == "Admin" && currentAction == "LichSuDonHang" ? "active" : null)" asp-controller="Admin" asp-action="LichSuDonHang">
+                    <i class="fa fa-clock-rotate-left"></i>
+                    <span>Lịch sử đơn hàng</span>
+                </a>
+            </div>
+
+            <div class="admin-nav-section">
+                <p class="admin-nav-heading">Quản lý bán hàng</p>
+                <a class="admin-nav-link @(currentController == "AdminProduct" ? "active" : null)" asp-controller="AdminProduct" asp-action="Index">
+                    <i class="fa fa-box-open"></i>
+                    <span>Sản phẩm</span>
+                </a>
+                <a class="admin-nav-link @(currentController == "AdminCategory" ? "active" : null)" asp-controller="AdminCategory" asp-action="Index">
+                    <i class="fa fa-tags"></i>
+                    <span>Danh mục</span>
+                </a>
+                <a class="admin-nav-link @(currentController == "AdminOrder" ? "active" : null)" asp-controller="AdminOrder" asp-action="Index">
+                    <i class="fa fa-receipt"></i>
+                    <span>Đơn hàng</span>
+                </a>
+                <a class="admin-nav-link @(currentController == "AdminReport" ? "active" : null)" asp-controller="AdminReport" asp-action="Index">
+                    <i class="fa fa-chart-pie"></i>
+                    <span>Thống kê</span>
+                </a>
+            </div>
+
+            <div class="admin-nav-section">
+                <p class="admin-nav-heading">Khách hàng & nhân sự</p>
+                <a class="admin-nav-link @(currentController == "AdminStaff" ? "active" : null)" asp-controller="AdminStaff" asp-action="Index">
+                    <i class="fa fa-user-tie"></i>
+                    <span>Nhân viên</span>
+                </a>
+                <a class="admin-nav-link @(currentController == "AdminCustomer" ? "active" : null)" asp-controller="AdminCustomer" asp-action="Index">
+                    <i class="fa fa-users"></i>
+                    <span>Khách hàng</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="admin-content-wrapper">
+            <header class="admin-header">
+                <div>
+                    <p class="admin-page-subtitle">@ViewData["Subtitle"]</p>
+                    <h1 class="admin-page-title">@ViewData["Title"]</h1>
+                </div>
+                <div class="admin-header-actions">
+                    <div class="admin-user-chip">
+                        <i class="fa fa-user-shield"></i>
+                        <span>@User.Identity?.Name</span>
+                    </div>
+                    <form asp-controller="KhachHang" asp-action="DangXuat" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-primary btn-sm">Đăng xuất</button>
+                    </form>
+                </div>
+            </header>
+
+            <main class="admin-main">
+                @if (TempData["StatusMessage"] is string status && !string.IsNullOrWhiteSpace(status))
+                {
+                    <div class="alert alert-success admin-flash" role="alert">
+                        @status
+                    </div>
+                }
+                @RenderBody()
+            </main>
+
+            <footer class="admin-footer">
+                &copy; @DateTime.Now.Year - Mỹ Nghệ Việt Admin
+            </footer>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-ksm0QjmvYzu3n6PvJEa3TBUnIFVQGryuVKyXjH9MuNoMNFc13JUO2c+hJpytY1/6" crossorigin="anonymous"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

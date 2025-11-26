@@ -1,0 +1,78 @@
+@model IEnumerable<Web_ban_do_thu_cong_my_nghe.Data.Product>
+@{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1">Quản lý sản phẩm</h2>
+        <p class="text-muted mb-0">Theo dõi, thêm mới và chỉnh sửa sản phẩm trong cửa hàng.</p>
+    </div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary"><i class="fa fa-plus me-2"></i>Thêm sản phẩm</a>
+    </div>
+</div>
+
+@if (TempData["StatusMessage"] is string status && !string.IsNullOrWhiteSpace(status))
+{
+    <div class="alert alert-success">@status</div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Tên</th>
+                    <th>Danh mục</th>
+                    <th>Giá</th>
+                    <th>Tồn kho</th>
+                    <th>Cập nhật</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in Model)
+                {
+                    <tr>
+                        <td>@product.Id</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="@(!string.IsNullOrWhiteSpace(product.ImageUrl) ? product.ImageUrl : "https://via.placeholder.com/60")" class="rounded me-3" width="60" height="60" style="object-fit:cover;" alt="@product.Name" />
+                                <div>
+                                    <strong>@product.Name</strong>
+                                    <div class="text-muted small">@product.Description</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>@product.Category?.Name</td>
+                        <td>@product.Price.ToString("N0") đ</td>
+                        <td>
+                            @if (product.Stock <= 5)
+                            {
+                                <span class="badge bg-danger">@product.Stock</span>
+                            }
+                            else if (product.Stock <= 20)
+                            {
+                                <span class="badge bg-warning text-dark">@product.Stock</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">@product.Stock</span>
+                            }
+                        </td>
+                        <td>@product.UpdatedAt?.ToString("dd/MM/yyyy")</td>
+                        <td class="text-end">
+                            <a asp-action="Edit" asp-route-id="@product.Id" class="btn btn-sm btn-outline-secondary me-2">Sửa</a>
+                            <form asp-action="Delete" asp-route-id="@product.Id" method="post" class="d-inline" onsubmit="return confirm('Xác nhận xoá sản phẩm này?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Xoá</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

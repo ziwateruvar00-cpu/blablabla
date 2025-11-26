@@ -1,0 +1,85 @@
+@model Web_ban_do_thu_cong_my_nghe.ViewModels.AdminReportVM
+@{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Báo cáo & thống kê</h1>
+        <p class="page-subtitle">Theo dõi tăng trưởng doanh thu, sản phẩm nổi bật và cảnh báo tồn kho</p>
+    </div>
+    <div class="header-actions">
+        <a asp-controller="Admin" asp-action="Dashboard" class="btn btn-link">← Dashboard</a>
+    </div>
+</div>
+
+<div class="grid grid-3">
+    <div class="kpi-card">
+        <p class="kpi-label">Tổng đơn hàng</p>
+        <h3 class="kpi-value">@Model.TotalOrders</h3>
+    </div>
+    <div class="kpi-card">
+        <p class="kpi-label">Tổng khách hàng</p>
+        <h3 class="kpi-value">@Model.TotalCustomers</h3>
+    </div>
+    <div class="kpi-card">
+        <p class="kpi-label">Tổng doanh thu</p>
+        <h3 class="kpi-value">@Model.TotalRevenue.ToString("N0") ₫</h3>
+    </div>
+</div>
+
+<div class="panel mt-4">
+    <h4>Doanh thu theo ngày</h4>
+    <div class="chart">
+        @foreach (var point in Model.RevenuePoints)
+        {
+            <div class="chart-row">
+                <span class="chart-label">@point.Label</span>
+                <div class="chart-bar">
+                    <div class="chart-fill" style="width:@(Math.Min(100, point.Value / (Model.TotalRevenue == 0 ? 1 : Model.TotalRevenue) * 100))%"></div>
+                </div>
+                <span class="chart-value">@point.Value.ToString("N0") ₫</span>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="grid grid-2 mt-4">
+    <div class="panel">
+        <h4>Top sản phẩm bán chạy</h4>
+        <ul class="list">
+            @foreach (var product in Model.TopProducts)
+            {
+                <li class="list-item">
+                    <div>
+                        <p class="list-title">@product.Name</p>
+                        <p class="list-subtitle">@product.UnitsSold sản phẩm</p>
+                    </div>
+                    <strong>@product.Revenue.ToString("N0") ₫</strong>
+                </li>
+            }
+        </ul>
+    </div>
+    <div class="panel">
+        <h4>Cảnh báo tồn kho</h4>
+        @if (!Model.InventoryAlerts.Any())
+        {
+            <p class="text-muted">Không có sản phẩm nào dưới ngưỡng 10.</p>
+        }
+        else
+        {
+            <ul class="list">
+                @foreach (var alert in Model.InventoryAlerts)
+                {
+                    <li class="list-item">
+                        <div>
+                            <p class="list-title">@alert.ProductName</p>
+                            <p class="list-subtitle">Tồn kho: @alert.CurrentStock</p>
+                        </div>
+                        <span class="badge badge-warning">Bổ sung</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

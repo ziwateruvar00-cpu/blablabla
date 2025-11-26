@@ -1,70 +1,84 @@
 @model IEnumerable<Web_ban_do_thu_cong_my_nghe.Data.Order>
+@using Web_ban_do_thu_cong_my_nghe.Helpers
 
 @{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
     ViewData["Title"] = "Lịch sử đơn hàng";
-    var statusOptions = new[] { "Chờ xác nhận", "Đang giao hàng", "Đã hoàn thành" };
+    ViewData["Subtitle"] = "Theo dõi trạng thái và cập nhật giao hàng";
+    var statusOptions = (System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<int, string>>)ViewBag.StatusOptions
+        ?? OrderStatusHelper.AllStatuses;
 }
 
-<h2 class="mb-4">Lịch sử đơn hàng</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Lịch sử đơn hàng</h1>
+        <p class="page-subtitle">Danh sách toàn bộ đơn và tình trạng xử lý</p>
+    </div>
+</div>
+
 @if (TempData["StatusMessage"] is string statusMessage)
 {
-    <div class="alert alert-success">@statusMessage</div>
+    <div class="alert alert-success admin-flash">@statusMessage</div>
 }
+
 @if (!Model.Any())
 {
     <div class="alert alert-info">Chưa có đơn hàng nào.</div>
 }
 else
 {
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Mã đơn</th>
-                <th>Khách hàng</th>
-                <th>Ngày đặt</th>
-                <th>Trạng thái</th>
-                <th>Tổng tiền</th>
-                <th>Điện thoại</th>
-                <th>Địa chỉ giao</th>
-                <th>Ghi chú</th>
-                <th>Cập nhật trạng thái</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var order in Model)
-            {
-                <tr>
-                    <td>@order.Id</td>
-                    <td>@(order.User?.Fullname ?? "-")</td>
-                    <td>@(order.OrderDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
-                    <td>@(!string.IsNullOrWhiteSpace(order.Status) ? order.Status : "Chờ xác nhận")</td>
-                    <td>@order.TotalMoney.ToString("N0")</td>
-                    <td>@order.ShippingPhone</td>
-                    <td>@order.ShippingAddress</td>
-                    <td>@order.Notes</td>
-                    <td>
-                        <form asp-action="CapNhatTrangThai" asp-controller="Admin" method="post" class="d-flex gap-2">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@order.Id" />
-                            <select name="status" class="form-select form-select-sm">
-                                @foreach (var status in statusOptions)
-                                {
-                                    var selected = string.Equals(order.Status, status, System.StringComparison.OrdinalIgnoreCase);
-                                    if (selected)
-                                    {
-                                        <option value="@status" selected>@status</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@status">@status</option>
-                                    }
-                                }
-                            </select>
-                            <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="panel">
+        <div class="panel-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Tổng số: @Model.Count() đơn</h4>
+        </div>
+        <div class="table-responsive mt-3">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
+                        <th>Ngày đặt</th>
+                        <th>Trạng thái</th>
+                        <th>Tổng tiền</th>
+                        <th>Điện thoại</th>
+                        <th>Địa chỉ giao</th>
+                        <th>Ghi chú</th>
+                        <th>Cập nhật</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        <tr>
+                            <td>#@order.Id</td>
+                            <td>@(order.User?.Fullname ?? "-")</td>
+                            <td>@(order.OrderDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                            <td>
+                                <span class="status-badge @OrderStatusHelper.GetStatusClass(order.Status)">
+                                    @OrderStatusHelper.GetStatusText(order.Status)
+                                </span>
+                            </td>
+                            <td>@order.TotalMoney.ToString("N0")</td>
+                            <td>@order.ShippingPhone</td>
+                            <td>@order.ShippingAddress</td>
+                            <td>@order.Notes</td>
+                            <td>
+                                <form asp-action="CapNhatTrangThai" asp-controller="Admin" method="post" class="status-inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@order.Id" />
+                                    <select name="status" class="form-select">
+                                        @foreach (var status in statusOptions)
+                                        {
+                                            <option value="@status.Key" selected="@(order.Status == status.Key)">@status.Value</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 }

@@ -1,11 +1,21 @@
 ﻿@model Web_ban_do_thu_cong_my_nghe.ViewModels.LoginVM
 @{
-    ViewData["Title"] = "Đăng nhập";
+    var loginTitle = ViewBag.LoginTitle as string ?? "Đăng nhập";
+    var loginDescription = ViewBag.LoginDescription as string;
+    var formAction = ViewBag.FormAction as string ?? "DangNhap";
+    var formController = ViewBag.FormController as string ?? "KhachHang";
+    var showForgot = ViewBag.ShowForgot is bool flag ? flag : true;
+    var returnUrl = ViewBag.ReturnUrl as string;
+    ViewData["Title"] = loginTitle;
 }
 
 <div class="container-fluid bg-light overflow-hidden py-5">
     <div class="container py-5">
-        <h1 class="mb-4 wow fadeInUp" data-wow-delay="0.1s">Đăng Nhập</h1>
+        <h1 class="mb-4 wow fadeInUp" data-wow-delay="0.1s">@loginTitle</h1>
+        @if (!string.IsNullOrWhiteSpace(loginDescription))
+        {
+            <p class="text-muted">@loginDescription</p>
+        }
 
         
         @if (TempData["SuccessMessage"] != null)
@@ -15,7 +25,12 @@
             </div>
         }
 
-        <form asp-action="DangNhap" asp-route-returnurl="@ViewBag.ReturnUrl" method="post">
+        <form asp-action="@formAction" asp-controller="@formController" method="post">
+            @Html.AntiForgeryToken()
+            @if (!string.IsNullOrEmpty(returnUrl))
+            {
+                <input type="hidden" name="ReturnUrl" value="@returnUrl" />
+            }
             <div asp-validation-summary="All" class="text-danger"></div>
 
             <div class="row">
@@ -39,9 +54,12 @@
                     <button type="submit" class="btn btn-primary border-secondary py-3 px-4 text-uppercase w-100 text-primary">
                         Đăng Nhập
                     </button>
-                    <a asp-controller="KhachHang" asp-action="QuenMatKhau" class="btn border-danger">
-                        Quên mật khẩu
-                    </a>
+                    @if (showForgot)
+                    {
+                        <a asp-controller="KhachHang" asp-action="QuenMatKhau" class="btn border-danger">
+                            Quên mật khẩu
+                        </a>
+                    }
                 </div>
             </div>
         </form>

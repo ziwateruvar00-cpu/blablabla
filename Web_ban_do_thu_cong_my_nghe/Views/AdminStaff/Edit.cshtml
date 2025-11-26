@@ -1,0 +1,40 @@
+@model Web_ban_do_thu_cong_my_nghe.Data.NhanVien
+@{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Cập nhật nhân viên</h1>
+        <p class="page-subtitle">Điều chỉnh thông tin nhân sự</p>
+    </div>
+    <div class="header-actions">
+        <a asp-action="Index" class="btn btn-link">← Danh sách nhân viên</a>
+    </div>
+</div>
+
+<div class="panel">
+    <form asp-action="Edit" method="post" class="form-grid">
+        <input type="hidden" asp-for="MaNV" />
+        <div>
+            <label>Họ tên</label>
+            <input asp-for="HoTen" class="form-control" />
+            <span asp-validation-for="HoTen" class="text-danger"></span>
+        </div>
+        <div>
+            <label>Email</label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div>
+            <label>Mật khẩu</label>
+            <input asp-for="MatKhau" class="form-control" type="password" />
+            <span asp-validation-for="MatKhau" class="text-danger"></span>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+            <a asp-action="Index" class="btn btn-outline">Hủy</a>
+        </div>
+        @Html.AntiForgeryToken()
+    </form>
+</div>

@@ -13,6 +13,7 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
     public class AdminController : Controller
     {
         private readonly MynghevietDbContext _db;
+        private const string SharedLoginViewPath = "~/Views/KhachHang/DangNhap.cshtml";
 
         public AdminController(MynghevietDbContext context)
         {
@@ -25,16 +26,19 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
         [AllowAnonymous] 
         public IActionResult Login()
         {
-            return View();
+            ConfigureAdminLoginView();
+            return View(SharedLoginViewPath, new LoginVM());
         }
 
 
         [HttpPost]
         [AllowAnonymous] 
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginVM model)
         {
+            ConfigureAdminLoginView();
             if (!ModelState.IsValid)
-                return View(model);
+                return View(SharedLoginViewPath, model);
 
             var admin = _db.Users.SingleOrDefault(u =>
               u.TenDangNhap.Trim() == model.TenDangNhap.Trim() && u.Role.Trim() == "Admin");
@@ -42,14 +46,14 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
             if (admin == null)
             {
                 ModelState.AddModelError("", "Tài khoản không tồn tại hoặc không phải admin.");
-                return View(model);
+                return View(SharedLoginViewPath, model);
             }
 
             
             if (admin.Password != model.Password)
             {
                 ModelState.AddModelError("", "Sai mật khẩu.");
-                return View(model);
+                return View(SharedLoginViewPath, model);
             }
 
             var claims = new List<Claim>
@@ -66,7 +70,7 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
 
 
             
-            return RedirectToAction("Index", "Admin");
+            return RedirectToAction("Dashboard", "Admin");
         }
 
 
@@ -85,6 +89,83 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
             
             var users = await _db.Users.ToListAsync();
             return View(users); 
+        }
+        
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Dashboard()
+        {
+            ViewData["Title"] = "Dashboard";
+            ViewData["Subtitle"] = "Tổng quan hoạt động";
+
+            var today = DateTime.Today;
+            var monthStart = new DateTime(today.Year, today.Month, 1);
+            var yearStart = new DateTime(today.Year, 1, 1);
+
+            var totalUsers = await _db.Users.CountAsync();
+            var totalOrders = await _db.Orders.CountAsync();
+            var totalRevenue = await _db.Orders.SumAsync(o => (decimal?)o.TotalMoney) ?? 0m;
+            var revenueToday = await _db.Orders
+                .Where(o => o.OrderDate.HasValue && o.OrderDate.Value.Date == today)
+                .SumAsync(o => (decimal?)o.TotalMoney) ?? 0m;
+            var revenueMonth = await _db.Orders
+                .Where(o => o.OrderDate.HasValue && o.OrderDate.Value >= monthStart && o.OrderDate.Value < monthStart.AddMonths(1))
+                .SumAsync(o => (decimal?)o.TotalMoney) ?? 0m;
+            var revenueYear = await _db.Orders
+                .Where(o => o.OrderDate.HasValue && o.OrderDate.Value >= yearStart && o.OrderDate.Value < yearStart.AddYears(1))
+                .SumAsync(o => (decimal?)o.TotalMoney) ?? 0m;
+
+            var inventory = await _db.Products.SumAsync(p => (int?)p.Stock) ?? 0;
+            var unitsSold = await _db.OrderDetails.SumAsync(od => (int?)od.Quantity) ?? 0;
+            var productCount = await _db.Products.CountAsync();
+            var categoryCount = await _db.Categories.CountAsync();
+            var staffCount = await _db.NhanViens.CountAsync();
+            var customerCount = await _db.Users.CountAsync(u => u.Role == "Customer");
+            var pendingOrders = await _db.Orders.CountAsync(o => o.Status == OrderStatusHelper.Pending);
+            var shippingOrders = await _db.Orders.CountAsync(o => o.Status == OrderStatusHelper.Shipping);
+
+            var recentOrders = await _db.Orders
+                .Include(o => o.User)
+                .OrderByDescending(o => o.Id)
+                .Take(5)
+                .ToListAsync();
+
+            var topProducts = await _db.OrderDetails
+                .Include(od => od.Product)
+                .Where(od => od.Product != null)
+                .GroupBy(od => new { od.Product!.Id, od.Product.Name, od.Product.Stock })
+                .Select(g => new TopProductVM
+                {
+                    Name = g.Key.Name,
+                    Stock = g.Key.Stock,
+                    Quantity = g.Sum(x => x.Quantity),
+                    UnitsSold = g.Sum(x => x.Quantity),
+                    Revenue = g.Sum(x => x.PriceAtPurchase * x.Quantity)
+                })
+                .OrderByDescending(tp => tp.Quantity)
+                .Take(5)
+                .ToListAsync();
+
+            var model = new AdminDashboardVM
+            {
+                TotalUsers = totalUsers,
+                TotalOrders = totalOrders,
+                TotalRevenue = totalRevenue,
+                RevenueToday = revenueToday,
+                RevenueThisMonth = revenueMonth,
+                RevenueThisYear = revenueYear,
+                ProductCount = productCount,
+                CategoryCount = categoryCount,
+                InventoryInStock = inventory,
+                UnitsSold = unitsSold,
+                StaffCount = staffCount,
+                CustomerCount = customerCount,
+                PendingOrders = pendingOrders,
+                ShippingOrders = shippingOrders,
+                RecentOrders = recentOrders,
+                TopProducts = topProducts
+            };
+
+            return View(model);
         }
 
         
@@ -121,7 +202,7 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
 
             _db.Update(userToUpdate);
             await _db.SaveChangesAsync();
-
+            //mmmm
             
             return RedirectToAction(nameof(Index));
         }
@@ -133,15 +214,16 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
                 .Include(o => o.User)
                 .ToListAsync();
 
+            ViewBag.StatusOptions = OrderStatusHelper.AllStatuses;
             return View(orders);
         }
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CapNhatTrangThai(int id, string status)
+        public async Task<IActionResult> CapNhatTrangThai(int id, int status)
         {
-            if (string.IsNullOrWhiteSpace(status))
+            if (!OrderStatusHelper.IsValid(status))
             {
                 TempData["StatusMessage"] = "Vui lòng chọn trạng thái hợp lệ.";
                 return RedirectToAction(nameof(LichSuDonHang));
@@ -159,6 +241,15 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
 
             TempData["StatusMessage"] = "Cập nhật trạng thái thành công.";
             return RedirectToAction(nameof(LichSuDonHang));
+        }
+
+        private void ConfigureAdminLoginView()
+        {
+            ViewBag.LoginTitle = "Đăng nhập quản trị";
+            ViewBag.LoginDescription = "Dành cho tài khoản Admin/Staff";
+            ViewBag.FormAction = nameof(Login);
+            ViewBag.FormController = nameof(AdminController).Replace("Controller", string.Empty);
+            ViewBag.ShowForgot = false;
         }
     }
 }

@@ -1,0 +1,39 @@
+@model Web_ban_do_thu_cong_my_nghe.Data.Product
+@{
+    var categories = ViewBag.Categories as IEnumerable<Web_ban_do_thu_cong_my_nghe.Data.Category> ?? Enumerable.Empty<Web_ban_do_thu_cong_my_nghe.Data.Category>();
+}
+
+<div class="mb-3">
+    <label asp-for="Name" class="form-label">Tên sản phẩm</label>
+    <input asp-for="Name" class="form-control" />
+    <span asp-validation-for="Name" class="text-danger"></span>
+</div>
+<div class="mb-3">
+    <label asp-for="Description" class="form-label">Mô tả</label>
+    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+</div>
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="Price" class="form-label">Giá</label>
+        <input asp-for="Price" class="form-control" type="number" step="1000" min="0" />
+        <span asp-validation-for="Price" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Stock" class="form-label">Tồn kho</label>
+        <input asp-for="Stock" class="form-control" type="number" min="0" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="CategoryId" class="form-label">Danh mục</label>
+        <select asp-for="CategoryId" class="form-select">
+            <option value="">-- Chọn danh mục --</option>
+            @foreach (var cat in categories)
+            {
+                <option value="@cat.Id">@cat.Name</option>
+            }
+        </select>
+    </div>
+</div>
+<div class="mb-3 mt-3">
+    <label asp-for="ImageUrl" class="form-label">Ảnh (URL)</label>
+    <input asp-for="ImageUrl" class="form-control" />
+</div>

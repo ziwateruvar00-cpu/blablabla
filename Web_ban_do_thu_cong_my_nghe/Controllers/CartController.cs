@@ -38,7 +38,15 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
         public List<CartItem> Cart => HttpContext.Session.Get<List<CartItem>>(MySetting.CART_KEY) ?? new List<CartItem>();
         public IActionResult Index()
         {
-            return View(Cart);
+            var cartItems = Cart;
+            var totals = CalculateCartTotals(cartItems);
+
+            ViewBag.CartSubtotal = totals.Subtotal;
+            ViewBag.ShippingFee = totals.ShippingFee;
+            ViewBag.DiscountAmount = totals.Discount;
+            ViewBag.CartTotal = totals.Total;
+
+            return View(cartItems);
         }
         public IActionResult AddToCart(int id, int quantity = 1)
         {
@@ -79,6 +87,38 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
                 HttpContext.Session.Set(MySetting.CART_KEY, gioHang);
             }
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public IActionResult UpdateQuantity(int id, int quantity)
+        {
+            if (quantity < 1)
+            {
+                quantity = 1;
+            }
+
+            var cartItems = Cart;
+            var item = cartItems.SingleOrDefault(p => p.MaHh == id);
+            if (item == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy sản phẩm trong giỏ hàng." });
+            }
+
+            item.SoLuong = quantity;
+            HttpContext.Session.Set(MySetting.CART_KEY, cartItems);
+
+            var totals = CalculateCartTotals(cartItems);
+
+            return Json(new
+            {
+                success = true,
+                quantity = item.SoLuong,
+                lineTotal = item.ThanhTien,
+                subtotal = totals.Subtotal,
+                shippingFee = totals.ShippingFee,
+                discount = totals.Discount,
+                total = totals.Total
+            });
         }
         [Authorize]
         [HttpGet]
@@ -160,7 +200,7 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
                     {
                         UserId = customerId,
                         OrderDate = DateTime.Now,
-                        Status = "Pending",
+                        Status = OrderStatusHelper.Pending,
                         TotalMoney = orderTotal,
                         Notes = BuildOrderNotes(model.Ghichu, paymentLabel, shippingInfo.Label),
                         ShippingAddress = shippingAddress!,
@@ -247,5 +287,18 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
 
             return noteBuilder.ToString();
         }
+
+        private CartTotals CalculateCartTotals(List<CartItem> cartItems)
+        {
+            var subtotal = cartItems.Sum(item => item.ThanhTien);
+            var shippingFee = ShippingOptions.TryGetValue(DefaultShippingKey, out var defaultShipping)
+                ? defaultShipping.Fee
+                : 0m;
+            const decimal discount = 0m;
+            var total = subtotal + shippingFee - discount;
+            return new CartTotals(subtotal, shippingFee, discount, total);
+        }
+
+        private sealed record CartTotals(decimal Subtotal, decimal ShippingFee, decimal Discount, decimal Total);
     }
 }

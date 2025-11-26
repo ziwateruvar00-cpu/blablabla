@@ -1,11 +1,18 @@
 ﻿@model Web_ban_do_thu_cong_my_nghe.ViewModels.ChiTietHangHoaVM
 @{
     ViewData["Title"] = "Detial";
-    Func<string, string> resolveImage = imagePath =>
+    Func<string, string> resolveImage = rawPath =>
     {
-        if (string.IsNullOrWhiteSpace(imagePath))
+        if (string.IsNullOrWhiteSpace(rawPath))
         {
             return Url.Content("~/img/product-1.png");
+        }
+
+        var imagePath = rawPath.Trim().Replace("\\", "/");
+        var wwwrootIndex = imagePath.IndexOf("wwwroot/", StringComparison.OrdinalIgnoreCase);
+        if (wwwrootIndex >= 0)
+        {
+            imagePath = imagePath[(wwwrootIndex + "wwwroot/".Length)..];
         }
 
         if (imagePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
@@ -16,6 +23,35 @@
         if (imagePath.StartsWith("~/"))
         {
             return Url.Content(imagePath);
+        }
+
+        if (imagePath.StartsWith("/"))
+        {
+            return Url.Content("~" + imagePath);
+        }
+
+        if (imagePath.Contains('/'))
+        {
+            var normalized = imagePath.TrimStart('/');
+            const string hinhPrefix = "hinh/";
+
+            if (normalized.StartsWith(hinhPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var sanitized = normalized;
+                while (sanitized.StartsWith(hinhPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    sanitized = sanitized[hinhPrefix.Length..];
+                }
+
+                if (string.IsNullOrEmpty(sanitized))
+                {
+                    return Url.Content("~/img/product-1.png");
+                }
+
+                return Url.Content($"~/hinh/{sanitized}");
+            }
+
+            return Url.Content($"~/{normalized}");
         }
 
         return Url.Content($"~/hinh/{imagePath}");

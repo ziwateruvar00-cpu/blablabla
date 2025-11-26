@@ -4,11 +4,18 @@
 @{
     ViewData["Title"] = "Tài khoản của tôi";
     var activeTab = (string)(ViewBag.ActiveTab ?? "overview");
-    Func<string, string, string> resolveImage = (source, fallback) =>
+    Func<string, string, string> resolveImage = (rawSource, fallback) =>
     {
-        if (string.IsNullOrWhiteSpace(source))
+        if (string.IsNullOrWhiteSpace(rawSource))
         {
             return Url.Content(fallback);
+        }
+
+        var source = rawSource.Trim().Replace("\\", "/");
+        var wwwrootIndex = source.IndexOf("wwwroot/", StringComparison.OrdinalIgnoreCase);
+        if (wwwrootIndex >= 0)
+        {
+            source = source[(wwwrootIndex + "wwwroot/".Length)..];
         }
 
         if (source.StartsWith("http", StringComparison.OrdinalIgnoreCase))
@@ -21,12 +28,36 @@
             return Url.Content(source);
         }
 
-        if (!source.Contains('/'))
+        if (source.StartsWith("/"))
         {
-            return Url.Content($"~/hinh/{source}");
+            return Url.Content("~" + source);
         }
 
-        return Url.Content("~/" + source.TrimStart('/'));
+        if (source.Contains('/'))
+        {
+            var normalized = source.TrimStart('/');
+            const string hinhPrefix = "hinh/";
+
+            if (normalized.StartsWith(hinhPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var sanitized = normalized;
+                while (sanitized.StartsWith(hinhPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    sanitized = sanitized[hinhPrefix.Length..];
+                }
+
+                if (string.IsNullOrEmpty(sanitized))
+                {
+                    return Url.Content(fallback);
+                }
+
+                return Url.Content($"~/hinh/{sanitized}");
+            }
+
+            return Url.Content($"~/{normalized}");
+        }
+
+        return Url.Content($"~/hinh/{source}");
     };
 }
 
@@ -136,7 +167,7 @@
                                                     <p class="mb-1 text-muted">@notification.Message</p>
                                                     <small class="text-secondary">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
                                                 </div>
-                                                <span class="badge @(notification.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase) ? "bg-success" : "bg-warning text-dark")">@notification.Status</span>
+                                                <span class="badge @(notification.StatusCode == OrderStatusHelper.Completed ? "bg-success" : "bg-warning text-dark")">@notification.Status</span>
                                             </div>
                                         </li>
                                     }

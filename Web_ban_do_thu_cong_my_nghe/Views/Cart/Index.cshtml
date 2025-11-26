@@ -1,5 +1,6 @@
 ﻿@model IEnumerable<Web_ban_do_thu_cong_my_nghe.ViewModels.CartItem>
 @using System.Linq
+@using System.Globalization
 @{
     ViewData["Title"] = "Giỏ hàng";
     var hasItems = Model.Any();
@@ -10,6 +11,7 @@
     var appliedCoupon = ViewBag.CouponCode as string ?? string.Empty;
     var couponDescription = ViewBag.CouponDescription as string ?? string.Empty;
     var couponMessage = ViewBag.CouponMessage as string;
+    var updateQuantityUrl = Url.Action("UpdateQuantity", "Cart");
 }
 
 <!-- Single Page Header start -->
@@ -27,8 +29,8 @@
     <div class="container py-5">
         @if (hasItems)
         {
-            <div class="table-responsive">
-                <table class="table">
+            <div class="table-responsive" data-cart-table data-update-url="@updateQuantityUrl">
+                <table class="table mb-0">
                     <thead>
                         <tr>
                             <th scope="col">Tên sản phẩm</th>
@@ -42,7 +44,7 @@
                     <tbody>
                         @foreach (var item in Model)
                         {
-                            <tr>
+                            <tr data-item-id="@item.MaHh">
                                 <th scope="row">
                                     <p class="mb-0 py-4">
                                         <a asp-action="Detail" asp-controller="HangHoa" asp-route-id="@item.MaHh">
@@ -59,20 +61,20 @@
                                 <td>
                                     <div class="input-group quantity py-4" style="width: 100px;">
                                         <div class="input-group-btn">
-                                            <button class="btn btn-sm btn-minus rounded-circle bg-light border">
+                                            <button type="button" class="btn btn-sm btn-minus rounded-circle bg-light border" data-quantity-action="decrease">
                                                 <i class="fa fa-minus"></i>
                                             </button>
                                         </div>
-                                        <input type="text" class="form-control form-control-sm text-center border-0" value="@item.SoLuong">
+                                        <input type="text" class="form-control form-control-sm text-center border-0 quantity-input" data-quantity-input value="@item.SoLuong">
                                         <div class="input-group-btn">
-                                            <button class="btn btn-sm btn-plus rounded-circle bg-light border">
+                                            <button type="button" class="btn btn-sm btn-plus rounded-circle bg-light border" data-quantity-action="increase">
                                                 <i class="fa fa-plus"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <p class="mb-0 py-4">@item.ThanhTien.ToString("N0")</p>
+                                    <p class="mb-0 py-4 line-total" data-line-total>@item.ThanhTien.ToString("N0")</p>
                                 </td>
                                 <td class="py-4">
                                     <a asp-action="RemoveCart" asp-controller="Cart" asp-route-id="@item.MaHh" class="btn btn-md rounded-circle bg-light border">
@@ -120,29 +122,26 @@
 
                     <div class="d-flex justify-content-between mb-3">
                         <h5 class="mb-0 me-2">Tổng phụ:</h5>
-                        <p class="mb-0"><b>@subtotal.ToString("N0")</b></p>
+                        <p class="mb-0"><b data-cart-subtotal>@subtotal.ToString("N0")</b></p>
                     </div>
 
                     <div class="d-flex justify-content-between mb-3">
                         <h5 class="mb-0 me-2">Vận chuyển:</h5>
-                        <p class="mb-0"><b>@shippingFee.ToString("N0")</b></p>
+                        <p class="mb-0"><b data-shipping-fee>@shippingFee.ToString("N0")</b></p>
                     </div>
 
-                    @if (discountAmount > 0)
+                    <div class="d-flex justify-content-between mb-3 text-success @(discountAmount > 0 ? string.Empty : "d-none")" data-discount-row>
+                        <h5 class="mb-0 me-2">Giảm giá:</h5>
+                        <p class="mb-0" data-discount-amount>-@discountAmount.ToString("N0")</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(couponDescription))
                     {
-                        <div class="d-flex justify-content-between mb-3 text-success">
-                            <h5 class="mb-0 me-2">Giảm giá:</h5>
-                            <p class="mb-0">-@discountAmount.ToString("N0")</p>
-                        </div>
-                        @if (!string.IsNullOrEmpty(couponDescription))
-                        {
-                            <p class="mb-3 text-success">@couponDescription</p>
-                        }
+                        <p class="mb-3 text-success" data-discount-description>@couponDescription</p>
                     }
 
                     <div class="py-4 mb-4 border-top border-bottom d-flex justify-content-between">
                         <h5 class="mb-0 ps-4 me-2">Tổng cộng:</h5>
-                        <p class="mb-0 pe-4"><b>@total.ToString("N0")</b></p>
+                        <p class="mb-0 pe-4"><b data-cart-total>@total.ToString("N0")</b></p>
                     </div>
 
                     <a class="btn border-secondary rounded-pill px-4 py-3 text-uppercase mb-4 ms-4" asp-action="Checkout" asp-controller="Cart">
@@ -154,4 +153,132 @@
     </div>
 </div>
 <!-- Cart Page End -->
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cartTable = document.querySelector('[data-cart-table]');
+            if (!cartTable) {
+                return;
+            }
+
+            const updateUrl = cartTable.getAttribute('data-update-url');
+            if (!updateUrl) {
+                return;
+            }
+
+            const subtotalEl = document.querySelector('[data-cart-subtotal]');
+            const shippingEl = document.querySelector('[data-shipping-fee]');
+            const discountRow = document.querySelector('[data-discount-row]');
+            const discountAmountEl = document.querySelector('[data-discount-amount]');
+            const totalEl = document.querySelector('[data-cart-total]');
+            const formatter = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+            const quantityInputs = cartTable.querySelectorAll('[data-quantity-input]');
+            quantityInputs.forEach((input) => {
+                input.addEventListener('change', () => queueQuantityUpdate(input));
+                input.addEventListener('input', () => queueQuantityUpdate(input));
+            });
+
+            cartTable.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-quantity-action]');
+                if (!button) {
+                    return;
+                }
+
+                event.preventDefault();
+                const input = button.closest('.quantity')?.querySelector('[data-quantity-input]');
+                if (!input) {
+                    return;
+                }
+
+                let current = parseInt(input.value, 10);
+                if (!Number.isFinite(current) || current < 0) {
+                    current = 0;
+                }
+
+                current = button.dataset.quantityAction === 'increase' ? current + 1 : current - 1;
+                if (current < 1) {
+                    current = 1;
+                }
+
+                input.value = current;
+                performQuantityUpdate(input);
+            });
+
+            function queueQuantityUpdate(input) {
+                clearTimeout(input._cartUpdateTimer);
+                input._cartUpdateTimer = setTimeout(() => performQuantityUpdate(input), 500);
+            }
+
+            function performQuantityUpdate(input) {
+                const row = input.closest('tr');
+                if (!row || row.dataset.updating === 'true') {
+                    return;
+                }
+
+                let quantity = parseInt(input.value, 10);
+                if (!Number.isInteger(quantity) || quantity < 1) {
+                    quantity = 1;
+                    input.value = quantity;
+                }
+
+                const productId = row.dataset.itemId;
+                if (!productId) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('id', productId);
+                formData.append('quantity', quantity);
+
+                row.dataset.updating = 'true';
+
+                fetch(updateUrl, { method: 'POST', body: formData })
+                    .then((response) => response.ok ? response.json() : Promise.reject(new Error('Không thể cập nhật giỏ hàng.')))
+                    .then((data) => {
+                        if (!data || data.success === false) {
+                            throw new Error(data?.message ?? 'Không thể cập nhật giỏ hàng.');
+                        }
+
+                        input.value = data.quantity;
+
+                        const lineTotalEl = row.querySelector('[data-line-total]');
+                        if (lineTotalEl) {
+                            lineTotalEl.textContent = formatter.format(data.lineTotal);
+                        }
+
+                        if (subtotalEl) {
+                            subtotalEl.textContent = formatter.format(data.subtotal);
+                        }
+
+                        if (shippingEl) {
+                            shippingEl.textContent = formatter.format(data.shippingFee);
+                        }
+
+                        if (discountRow && discountAmountEl) {
+                            if (data.discount > 0) {
+                                discountRow.classList.remove('d-none');
+                                discountAmountEl.textContent = '-' + formatter.format(data.discount);
+                            } else {
+                                discountRow.classList.add('d-none');
+                                discountAmountEl.textContent = '-0';
+                            }
+                        }
+
+                        if (totalEl) {
+                            totalEl.textContent = formatter.format(data.total);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        alert(error.message || 'Cập nhật giỏ hàng thất bại.');
+                    })
+                    .finally(() => {
+                        delete row.dataset.updating;
+                    });
+            }
+        });
+    </script>
+}
 

@@ -1,6 +1,7 @@
 ﻿
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Web_ban_do_thu_cong_my_nghe.Helpers;
 
 namespace Web_ban_do_thu_cong_my_nghe.Data;
 
@@ -70,8 +71,7 @@ public partial class MynghevietDbContext : DbContext
                 .HasMaxLength(20)
                 .HasColumnName("shipping_phone");
             entity.Property(e => e.Status)
-                .HasMaxLength(50)
-                .HasDefaultValue("Pending")
+                .HasDefaultValue(OrderStatusHelper.Pending)
                 .HasColumnName("status");
             entity.Property(e => e.TotalMoney)
                 .HasColumnType("decimal(15, 2)")

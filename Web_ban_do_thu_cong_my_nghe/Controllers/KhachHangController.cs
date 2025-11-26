@@ -92,14 +92,16 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
         [HttpGet]
         public IActionResult DangNhap(string? ReturnUrl)
         {
-            ViewBag.ReturnUrl = ReturnUrl;
-            return View();
+            ConfigureLoginView("Đăng nhập tài khoản", nameof(DangNhap), nameof(KhachHangController).Replace("Controller", string.Empty), true, ReturnUrl);
+            return View(new LoginVM());
         }
 
         [AllowAnonymous] 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DangNhap(LoginVM model, string? ReturnUrl)
         {
+            ConfigureLoginView("Đăng nhập tài khoản", nameof(DangNhap), nameof(KhachHangController).Replace("Controller", string.Empty), true, ReturnUrl);
             if (ModelState.IsValid)
             {
                 var khachHang = db.Users.SingleOrDefault(kh => kh.TenDangNhap == model.TenDangNhap);
@@ -117,8 +119,8 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
                     }
                     else
                     {
-
-                        if (khachHang.Password != model.Password.ToMd5Hash(khachHang.RandomKey))
+                        var normalizedRole = NormalizeRole(khachHang.Role);
+                        if (!IsPasswordValid(khachHang, model.Password, normalizedRole))
                         {
                             ModelState.AddModelError("Lỗi", "Sai thông tin đăng nhập ");
                         }
@@ -126,24 +128,16 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
                         {
                             var claims = new List<Claim>
                             {
-
-                                new Claim(ClaimTypes.Name, khachHang.TenDangNhap),
-                                new Claim(MySetting.CLAIM_CUSTOMERID, khachHang.Id.ToString()), 
-                                new Claim(ClaimTypes.Role, khachHang.Role)
+                                new Claim(ClaimTypes.Name, khachHang.TenDangNhap ?? khachHang.Fullname ?? string.Empty),
+                                new Claim(MySetting.CLAIM_CUSTOMERID, khachHang.Id.ToString()),
+                                new Claim(ClaimTypes.Role, normalizedRole)
                             };
 
                             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
                             await HttpContext.SignInAsync(claimsPrincipal);
-                            if (Url.IsLocalUrl(ReturnUrl))
-                            {
-                                return Redirect(ReturnUrl);
-                            }
-                            else
-                            {
-                                return Redirect("/");
-                            }
 
+                            return RedirectAfterLogin(normalizedRole, ReturnUrl);
                         }
                     }
                 }
@@ -153,6 +147,57 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
         }
 
         #endregion
+
+        private void ConfigureLoginView(string title, string actionName, string controllerName, bool showForgot, string? returnUrl = null, string? description = null)
+        {
+            ViewBag.LoginTitle = title;
+            ViewBag.LoginDescription = description;
+            ViewBag.FormAction = actionName;
+            ViewBag.FormController = controllerName;
+            ViewBag.ShowForgot = showForgot;
+            ViewBag.ReturnUrl = returnUrl;
+        }
+
+        private static string NormalizeRole(string? role)
+        {
+            if (string.IsNullOrWhiteSpace(role))
+            {
+                return "Customer";
+            }
+
+            return role.Trim();
+        }
+
+        private static bool IsPasswordValid(User user, string providedPassword, string normalizedRole)
+        {
+            var hashedInput = providedPassword.ToMd5Hash(user.RandomKey);
+            if (string.Equals(user.Password, hashedInput, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(normalizedRole, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Equals(user.Password, providedPassword, StringComparison.Ordinal);
+            }
+
+            return false;
+        }
+
+        private IActionResult RedirectAfterLogin(string normalizedRole, string? returnUrl)
+        {
+            if (string.Equals(normalizedRole, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("Index", "Admin");
+            }
+
+            if (Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return Redirect("/");
+        }
 
        
         public async Task<IActionResult> Profile()
@@ -342,9 +387,10 @@ namespace Web_ban_do_thu_cong_my_nghe.Controllers
                 .Select(o => new NotificationVM
                 {
                     Title = $"Đơn hàng #{o.Id}",
-                    Message = $"Trạng thái hiện tại: {o.Status ?? "Chưa cập nhật"}",
+                    Message = $"Trạng thái hiện tại: {OrderStatusHelper.GetLabel(o.Status)}",
                     CreatedAt = o.OrderDate ?? DateTime.Now,
-                    Status = o.Status ?? "Chưa cập nhật"
+                    Status = OrderStatusHelper.GetLabel(o.Status),
+                    StatusCode = OrderStatusHelper.Normalize(o.Status)
                 })
                 .ToListAsync();
 
